@@ -1,0 +1,32 @@
+# Base configuration for the Monet GAN data loader
+# This serves as the default configuration that experiment configs can override
+# NOTE: run_name and description are NOT defined here - they MUST be in experiment configs
+
+# Dataset settings
+dataset:
+  competition_name: "gan-getting-started"
+  raw_data_dir: "data/raw"
+  
+  # Image settings
+  image:
+    original_size: 256
+    target_size: 256  # Can be changed to 64, 128, etc.
+    channels: 3
+
+# Train/test split settings (only photos are split, monet goes fully to train)
+split:
+  train_ratio: 0.9
+  random_seed: 42
+
+# AWS S3 settings
+s3:
+  bucket_name: "personal-data-science-data"
+  prefix: "monet-gan"
+
+# Weights & Biases settings
+wandb:
+  project_name: "monet-gan"
+  entity: null  # Uses default entity if null
+  tags:
+    - "pipeline"
+    - "loader"

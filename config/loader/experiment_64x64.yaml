@@ -1,0 +1,24 @@
+# Experiment configuration: 64x64 image resolution
+# Inherits from base.yaml and overrides specific settings
+
+_base_: "base.yaml"
+
+# Required fields
+run_name: "monet-loader-64x64"
+description: "Monet GAN dataset resized to 64x64 with 90/10 train/test split for photos"
+
+# Override image settings for 64x64 resolution
+dataset:
+  image:
+    target_size: 64
+
+# S3 prefix for this experiment
+s3:
+  prefix: "monet-gan/64x64"
+
+# W&B settings for this experiment
+wandb:
+  tags:
+    - "pipeline"
+    - "loader"
+    - "64x64"

@@ -1,0 +1,25 @@
+# Experiment configuration: 256x256 image resolution (original size)
+# Inherits from base.yaml and overrides specific settings
+
+_base_: "base.yaml"
+
+# Required fields
+run_name: "monet-loader-256x256"
+description: "Monet GAN dataset at original 256x256 resolution with 90/10 train/test split for photos"
+
+# Keep original image settings (256x256)
+dataset:
+  image:
+    target_size: 256
+
+# S3 prefix for this experiment
+s3:
+  prefix: "monet-gan/256x256"
+
+# W&B settings for this experiment
+wandb:
+  tags:
+    - "pipeline"
+    - "loader"
+    - "256x256"
+    - "original-resolution"
