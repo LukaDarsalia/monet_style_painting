@@ -1,0 +1,92 @@
+# Experiment configuration: Standard augmentations for image translation
+# Inherits from base.yaml and defines specific augmentation strategies
+
+_base_: "base.yaml"
+
+# Required fields
+run_name: "monet-augmenter-standard"
+description: "Standard augmentation pipeline for Monet GAN - geometric and color augmentations on photos and monet paintings"
+
+# Input artifact version
+input_artifact:
+  version: "latest"
+
+# S3 prefix for this experiment
+s3:
+  prefix: "monet-gan/augmented/standard"
+
+# W&B settings for this experiment
+wandb:
+  tags:
+    - "pipeline"
+    - "augmenter"
+    - "standard"
+
+# Augmentation definitions
+# Each aug_* group is applied independently (no correlation between groups)
+# Images are sampled WITHOUT replacement across groups
+augmentations:
+  # Photo augmentations (applied to train/photo)
+  photo:
+    # Geometric augmentations - rotation and flips
+    aug_geometric:
+      transforms:
+        - name: random_rotation
+          params:
+            degrees: 15
+        - name: random_horizontal_flip
+          params:
+            probability: 0.5
+      fraction: 0.3
+
+    # Color augmentations - brightness, contrast, saturation
+    aug_color:
+      transforms:
+        - name: color_jitter
+          params:
+            brightness: 0.2
+            contrast: 0.2
+            saturation: 0.2
+            hue: 0.1
+      fraction: 0.3
+
+    # Combined augmentation - light geometric + color
+    aug_combined:
+      transforms:
+        - name: random_rotation
+          params:
+            degrees: 10
+        - name: color_jitter
+          params:
+            brightness: 0.15
+            contrast: 0.15
+            saturation: 0.1
+            hue: 0.05
+        - name: random_horizontal_flip
+          params:
+            probability: 0.5
+      fraction: 0.2
+
+  # Monet augmentations (applied to train/monet)
+  monet:
+    # Light geometric augmentations for monet paintings
+    aug_geometric:
+      transforms:
+        - name: random_rotation
+          params:
+            degrees: 10
+        - name: random_horizontal_flip
+          params:
+            probability: 0.5
+      fraction: 0.4
+
+    # Very light color jitter to preserve painting style
+    aug_color_light:
+      transforms:
+        - name: color_jitter
+          params:
+            brightness: 0.1
+            contrast: 0.1
+            saturation: 0.1
+            hue: 0.02
+      fraction: 0.3

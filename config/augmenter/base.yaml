@@ -1,0 +1,59 @@
+# Base configuration for the Monet GAN data augmenter
+# This serves as the default configuration that experiment configs can override
+# NOTE: run_name and description are NOT defined here - they MUST be in experiment configs
+
+# Input artifact settings (from loader stage)
+input_artifact:
+  name: "monet-dataset"
+  version: "latest"  # Can be specific version like "v1" or "latest"
+
+# Output settings
+output:
+  random_seed: 42
+
+# AWS S3 settings
+s3:
+  bucket_name: "personal-data-science-data"
+  prefix: "monet-gan/augmented"
+
+# Weights & Biases settings
+wandb:
+  project_name: "monet-gan"
+  entity: null  # Uses default entity if null
+  tags:
+    - "pipeline"
+    - "augmenter"
+
+# Augmentation settings
+# Structure:
+#   <image_type>:
+#     <aug_name>:
+#       transforms:
+#         - name: <transform_name>
+#           params: {key: value, ...}
+#       fraction: <float between 0 and 1>
+#
+# Available transforms:
+#   - random_rotation: Rotate image by random angle
+#       params: degrees (max rotation angle)
+#   - random_horizontal_flip: Flip image horizontally with probability
+#       params: probability (default 0.5)
+#   - random_vertical_flip: Flip image vertically with probability
+#       params: probability (default 0.5)
+#   - color_jitter: Randomly change brightness, contrast, saturation, hue
+#       params: brightness, contrast, saturation, hue (all floats)
+#   - random_crop: Random crop and resize back to original size
+#       params: scale_min, scale_max (crop scale range)
+#   - gaussian_blur: Apply gaussian blur
+#       params: sigma_min, sigma_max
+#   - random_affine: Apply random affine transformation
+#       params: degrees, translate, scale, shear
+#   - random_perspective: Apply random perspective transformation
+#       params: distortion_scale, probability
+#   - random_erasing: Randomly erase rectangular region
+#       params: probability, scale_min, scale_max, ratio_min, ratio_max
+
+# Default augmentations (empty - should be defined in experiment configs)
+augmentations:
+  photo: {}
+  monet: {}

@@ -1,0 +1,29 @@
+# Experiment configuration: No augmentation (baseline)
+# Just copies data without any augmentations
+
+_base_: "base.yaml"
+
+# Required fields
+run_name: "monet-augmenter-no-aug"
+description: "Baseline - no augmentation, just copy original data"
+
+# Input artifact version
+input_artifact:
+  version: "latest"
+
+# S3 prefix for this experiment
+s3:
+  prefix: "monet-gan/augmented/no-aug"
+
+# W&B settings for this experiment
+wandb:
+  tags:
+    - "pipeline"
+    - "augmenter"
+    - "no-augmentation"
+    - "baseline"
+
+# No augmentations - just copy original data
+augmentations:
+  photo: {}
+  monet: {}
