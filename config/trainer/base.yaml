@@ -281,6 +281,7 @@ training:
   buffer_size: 50
   save_interval: 1
   n_critic: 5
+  accumulation_steps: 1
   normalize:
     mean: [0.485, 0.456, 0.406]
     std: [0.229, 0.224, 0.225]

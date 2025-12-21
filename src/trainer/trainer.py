@@ -131,6 +131,7 @@ class CycleGANTrainer:
         # Training params
         self.num_epochs = config['training']['num_epochs']
         self.batch_size = config['training']['batch_size']
+        self.accumulation_steps = config['training'].get('accumulation_steps', 1)
         
         # Input normalization (defaults to [-1, 1] -> [0, 1])
         normalize_config = config['training'].get('normalize', {})
@@ -176,9 +177,12 @@ class CycleGANTrainer:
         # Training state
         self.current_epoch = 0
         self.global_step = 0
+        self.optim_step = 0
         self.best_mifid = float('inf')
         self.steps_per_epoch: Optional[int] = None
         self._logged_generator_trace = False
+        self._d_accum_steps = 0
+        self._g_accum_steps = 0
     
     def _build_models(self):
         """Build generator and discriminator models."""
@@ -330,15 +334,16 @@ class CycleGANTrainer:
         losses = {}
         
         # Get n_critic for this step
-        n_critic = int(self.n_critic_scheduler.get_value(self.global_step, self.total_steps))
+        n_critic = int(self.n_critic_scheduler.get_value(self.optim_step, self.total_steps))
         n_critic = max(1, n_critic)
         
         # =====================
         # Train Discriminators
         # =====================
+        if self._d_accum_steps == 0:
+            self.optimizer_D.zero_grad()
         for _ in range(n_critic):
             self._set_requires_grad([self.D_A, self.D_B], True)
-            self.optimizer_D.zero_grad()
             
             # Generate fake images
             with torch.no_grad():
@@ -357,7 +362,7 @@ class CycleGANTrainer:
                 discriminator=self.D_A,
                 real_images=real_A,
                 fake_images=fake_A_buffered.detach(),
-                step=self.global_step,
+                step=self.optim_step,
                 total_steps=self.total_steps,
             )
             
@@ -369,14 +374,20 @@ class CycleGANTrainer:
                 discriminator=self.D_B,
                 real_images=real_B,
                 fake_images=fake_B_buffered.detach(),
-                step=self.global_step,
+                step=self.optim_step,
                 total_steps=self.total_steps,
             )
             
             # Combined discriminator loss
             loss_D = (loss_D_A + loss_D_B) * 0.5
-            loss_D.backward()
+            (loss_D / self.accumulation_steps).backward()
+        
+        self._d_accum_steps += 1
+        if self._d_accum_steps >= self.accumulation_steps:
             self.optimizer_D.step()
+            if self.scheduler_D is not None:
+                self.scheduler_D.step()
+            self._d_accum_steps = 0
         
         losses['D_A'] = losses_D_A['total_discriminator']
         losses['D_B'] = losses_D_B['total_discriminator']
@@ -398,7 +409,8 @@ class CycleGANTrainer:
         # Train Generators
         # ================
         self._set_requires_grad([self.D_A, self.D_B], False)
-        self.optimizer_G.zero_grad()
+        if self._g_accum_steps == 0:
+            self.optimizer_G.zero_grad()
         
         # Forward pass
         fake_B = self.G_A(real_A)  # photo -> monet
@@ -422,7 +434,7 @@ class CycleGANTrainer:
         loss_G_A, losses_G_A = self.loss_manager.compute_generator_loss(
             pred_fake_B, rec_A, real_A,
             idt_B, real_B,
-            step=self.global_step,
+            step=self.optim_step,
             total_steps=self.total_steps,
         )
         
@@ -430,20 +442,21 @@ class CycleGANTrainer:
         loss_G_B, losses_G_B = self.loss_manager.compute_generator_loss(
             pred_fake_A, rec_B, real_B,
             idt_A, real_A,
-            step=self.global_step,
+            step=self.optim_step,
             total_steps=self.total_steps,
         )
         
         # Combined generator loss
         loss_G = loss_G_A + loss_G_B
-        loss_G.backward()
-        self.optimizer_G.step()
+        (loss_G / self.accumulation_steps).backward()
         
-        # Update LR schedulers
-        if self.scheduler_G is not None:
-            self.scheduler_G.step()
-        if self.scheduler_D is not None:
-            self.scheduler_D.step()
+        self._g_accum_steps += 1
+        if self._g_accum_steps >= self.accumulation_steps:
+            self.optimizer_G.step()
+            if self.scheduler_G is not None:
+                self.scheduler_G.step()
+            self._g_accum_steps = 0
+            self.optim_step += 1
         
         losses['G_A'] = losses_G_A['total_generator']
         losses['G_B'] = losses_G_B['total_generator']
@@ -461,6 +474,7 @@ class CycleGANTrainer:
         losses['lr_G'] = self.optimizer_G.param_groups[0]['lr']
         losses['lr_D'] = self.optimizer_D.param_groups[0]['lr']
         losses['n_critic'] = n_critic
+        losses['accumulation_steps'] = self.accumulation_steps
         
         self.global_step += 1
         
@@ -527,6 +541,7 @@ class CycleGANTrainer:
         checkpoint = {
             'epoch': self.current_epoch,
             'global_step': self.global_step,
+            'optim_step': self.optim_step,
             'best_mifid': self.best_mifid,
             'G_A': self.G_A.state_dict(),
             'G_B': self.G_B.state_dict(),
@@ -554,6 +569,7 @@ class CycleGANTrainer:
         
         self.current_epoch = checkpoint['epoch']
         self.global_step = checkpoint['global_step']
+        self.optim_step = checkpoint.get('optim_step', self.global_step)
         self.best_mifid = checkpoint.get('best_mifid', float('inf'))
         
         self.G_A.load_state_dict(checkpoint['G_A'])
@@ -577,14 +593,15 @@ class CycleGANTrainer:
         """
         train_loader = dataloaders['train']
         
-        # Update total steps
+        # Update total steps (optimizer steps with accumulation)
         steps_per_epoch = len(train_loader)
-        self.total_steps = self.num_epochs * steps_per_epoch
+        optim_steps_per_epoch = math.ceil(steps_per_epoch / self.accumulation_steps)
+        self.total_steps = self.num_epochs * optim_steps_per_epoch
         
         # Rebuild schedulers with correct total_steps
         self._build_optimizers(
             total_steps=self.total_steps,
-            steps_per_epoch=steps_per_epoch,
+            steps_per_epoch=optim_steps_per_epoch,
             rebuild_optimizers=False,
         )
         
@@ -601,6 +618,8 @@ class CycleGANTrainer:
         print(f"\n=== Starting Training ===")
         print(f"  Epochs: {self.num_epochs}")
         print(f"  Steps per epoch: {steps_per_epoch}")
+        print(f"  Optimizer steps per epoch: {optim_steps_per_epoch}")
+        print(f"  Accumulation steps: {self.accumulation_steps}")
         print(f"  Total steps: {self.total_steps}")
         print(f"  Evaluations per epoch: {self.evals_per_epoch}")
         
@@ -648,6 +667,20 @@ class CycleGANTrainer:
                     test_A = test_batch if not isinstance(test_batch, dict) else test_batch.get('A', test_batch)
                     test_samples = self.generate_samples(test_A, real_B)
                     self.log_samples_to_wandb(test_samples, prefix='test_')
+            
+            # Flush remaining accumulated grads at end of epoch
+            if self._d_accum_steps > 0:
+                self.optimizer_D.step()
+                if self.scheduler_D is not None:
+                    self.scheduler_D.step()
+                self._d_accum_steps = 0
+            
+            if self._g_accum_steps > 0:
+                self.optimizer_G.step()
+                if self.scheduler_G is not None:
+                    self.scheduler_G.step()
+                self._g_accum_steps = 0
+                self.optim_step += 1
             
             # End of epoch
             avg_losses = {k: np.mean(v) for k, v in epoch_losses.items()}
