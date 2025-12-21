@@ -264,6 +264,16 @@ class CycleGANTrainer:
         std = torch.tensor(self.normalize_std, device=tensor.device).view(1, 3, 1, 1)
         return tensor * std + mean
 
+    @torch.no_grad()
+    def _param_norm(self, model: nn.Module, norm_type: float = 2.0) -> float:
+        """Compute L2 parameter norm for a model."""
+        total = 0.0
+        for param in model.parameters():
+            if param.requires_grad:
+                param_norm = param.detach().norm(norm_type).item()
+                total += param_norm ** 2
+        return total ** 0.5
+
     def _format_generator_trace(self, trace: List[Dict[str, Any]]) -> str:
         """Format generator trace into readable lines."""
         lines = []
@@ -371,6 +381,18 @@ class CycleGANTrainer:
         losses['D_A'] = losses_D_A['total_discriminator']
         losses['D_B'] = losses_D_B['total_discriminator']
         losses['D_total'] = (losses['D_A'] + losses['D_B']) * 0.5
+        
+        if self.loss_manager.gan_loss.gan_mode == 'wgan-gp':
+            if 'gradient_penalty' in losses_D_A:
+                losses['gp_A'] = losses_D_A['gradient_penalty']
+            if 'gradient_penalty' in losses_D_B:
+                losses['gp_B'] = losses_D_B['gradient_penalty']
+            if 'gradient_penalty_grad_norm' in losses_D_A:
+                losses['gp_grad_norm_A'] = losses_D_A['gradient_penalty_grad_norm']
+            if 'gradient_penalty_grad_norm' in losses_D_B:
+                losses['gp_grad_norm_B'] = losses_D_B['gradient_penalty_grad_norm']
+            losses['D_A_param_norm'] = self._param_norm(self.D_A)
+            losses['D_B_param_norm'] = self._param_norm(self.D_B)
         
         # ================
         # Train Generators
@@ -651,12 +673,13 @@ class CycleGANTrainer:
                 'epoch': epoch + 1,
             }, step=self.global_step)
             
-            # Save best checkpoint
+            # Save best checkpoint (best_model.pt only)
             is_best = metrics['mifid'] < self.best_mifid
             if is_best:
                 self.best_mifid = metrics['mifid']
                 print(f"  New best MiFID: {self.best_mifid:.2f}")
-                self.save_checkpoint(is_best=True)
+                best_path = self.output_dir / "best_model.pt"
+                self.save_checkpoint(path=best_path, is_best=False)
             
             # Save periodic checkpoint
             if (epoch + 1) % self.config['training']['save_interval'] == 0:

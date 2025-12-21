@@ -284,8 +284,8 @@ class GradientPenalty(nn.Module):
         discriminator: nn.Module,
         real: torch.Tensor,
         fake: torch.Tensor,
-    ) -> torch.Tensor:
-        """Calculate gradient penalty."""
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
+        """Calculate gradient penalty and mean gradient norm."""
         batch_size = real.size(0)
         device = real.device
         
@@ -310,7 +310,7 @@ class GradientPenalty(nn.Module):
         gradient_norm = gradients.norm(2, dim=1)
         gradient_penalty = self.lambda_gp * ((gradient_norm - 1) ** 2).mean()
         
-        return gradient_penalty
+        return gradient_penalty, gradient_norm.mean()
 
 
 def _weight_config_enabled(weight_config: Union[float, Dict[str, Any]]) -> bool:
@@ -474,8 +474,9 @@ class LossManager:
         gp_weight = self.get_weight('gradient_penalty', step, total_steps)
         if gp_weight > 0 and self.gradient_penalty is not None:
             if discriminator is not None and real_images is not None and fake_images is not None:
-                gp_loss = self.gradient_penalty(discriminator, real_images, fake_images)
+                gp_loss, gp_grad_norm = self.gradient_penalty(discriminator, real_images, fake_images)
                 losses['gradient_penalty'] = gp_loss.item()
+                losses['gradient_penalty_grad_norm'] = gp_grad_norm.item()
                 total_loss += gp_weight * gp_loss
         
         losses['total_discriminator'] = total_loss.item()
