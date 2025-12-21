@@ -21,7 +21,7 @@ discriminator:
   num_discriminators: 3
   input_channels: 3
   base_channels: 64
-  num_layers: 3
+  num_layers: 2
   kernel_size: 4
   norm: layer
   activation: leaky_relu

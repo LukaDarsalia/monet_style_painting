@@ -297,19 +297,35 @@ class GradientPenalty(nn.Module):
         # Get discriminator output
         d_interpolated = discriminator(interpolated)
         
-        # Calculate gradients
+        if isinstance(d_interpolated, (list, tuple)):
+            gp_losses = []
+            grad_norms = []
+            for i, d_out in enumerate(d_interpolated):
+                retain_graph = i < len(d_interpolated) - 1
+                gp_loss, grad_norm = self._gp_from_output(d_out, interpolated, retain_graph)
+                gp_losses.append(gp_loss)
+                grad_norms.append(grad_norm)
+            return torch.stack(gp_losses).mean(), torch.stack(grad_norms).mean()
+        
+        return self._gp_from_output(d_interpolated, interpolated, retain_graph=False)
+    
+    def _gp_from_output(
+        self,
+        d_out: torch.Tensor,
+        interpolated: torch.Tensor,
+        retain_graph: bool,
+    ) -> Tuple[torch.Tensor, torch.Tensor]:
         gradients = torch.autograd.grad(
-            outputs=d_interpolated,
+            outputs=d_out,
             inputs=interpolated,
-            grad_outputs=torch.ones_like(d_interpolated),
+            grad_outputs=torch.ones_like(d_out),
             create_graph=True,
-            retain_graph=True,
+            retain_graph=retain_graph,
         )[0]
         
-        gradients = gradients.view(batch_size, -1)
+        gradients = gradients.view(gradients.size(0), -1)
         gradient_norm = gradients.norm(2, dim=1)
         gradient_penalty = self.lambda_gp * ((gradient_norm - 1) ** 2).mean()
-        
         return gradient_penalty, gradient_norm.mean()
 
 
@@ -391,6 +407,13 @@ class LossManager:
             return 0.0
         return self.weight_schedulers[loss_name].get_value(step, total_steps)
     
+    def _reduce_gan_loss(self, prediction: Any, target_is_real: bool) -> torch.Tensor:
+        """Handle single or multiscale discriminator outputs."""
+        if isinstance(prediction, (list, tuple)):
+            losses = [self.gan_loss(pred, target_is_real) for pred in prediction]
+            return torch.stack(losses).mean()
+        return self.gan_loss(prediction, target_is_real)
+    
     def compute_generator_loss(
         self,
         fake_output: torch.Tensor,
@@ -413,9 +436,12 @@ class LossManager:
         adv_weight = self.get_weight('adversarial', step, total_steps)
         if adv_weight > 0:
             if self.gan_loss.gan_mode == 'hinge':
-                adv_loss = -fake_output.mean()
+                if isinstance(fake_output, (list, tuple)):
+                    adv_loss = -torch.stack([pred.mean() for pred in fake_output]).mean()
+                else:
+                    adv_loss = -fake_output.mean()
             else:
-                adv_loss = self.gan_loss(fake_output, target_is_real=True)
+                adv_loss = self._reduce_gan_loss(fake_output, target_is_real=True)
             losses['adversarial'] = adv_loss.item()
             total_loss += adv_weight * adv_loss
         
@@ -461,11 +487,11 @@ class LossManager:
         losses = {}
         
         # Real loss
-        real_loss = self.gan_loss(real_output, target_is_real=True)
+        real_loss = self._reduce_gan_loss(real_output, target_is_real=True)
         losses['d_real'] = real_loss.item()
         
         # Fake loss
-        fake_loss = self.gan_loss(fake_output, target_is_real=False)
+        fake_loss = self._reduce_gan_loss(fake_output, target_is_real=False)
         losses['d_fake'] = fake_loss.item()
         
         total_loss = (real_loss + fake_loss) * 0.5
