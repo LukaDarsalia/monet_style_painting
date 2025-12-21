@@ -300,27 +300,25 @@ class GradientPenalty(nn.Module):
         if isinstance(d_interpolated, (list, tuple)):
             gp_losses = []
             grad_norms = []
-            for i, d_out in enumerate(d_interpolated):
-                retain_graph = i < len(d_interpolated) - 1
-                gp_loss, grad_norm = self._gp_from_output(d_out, interpolated, retain_graph)
+            for d_out in d_interpolated:
+                gp_loss, grad_norm = self._gp_from_output(d_out, interpolated)
                 gp_losses.append(gp_loss)
                 grad_norms.append(grad_norm)
             return torch.stack(gp_losses).mean(), torch.stack(grad_norms).mean()
         
-        return self._gp_from_output(d_interpolated, interpolated, retain_graph=False)
+        return self._gp_from_output(d_interpolated, interpolated)
     
     def _gp_from_output(
         self,
         d_out: torch.Tensor,
         interpolated: torch.Tensor,
-        retain_graph: bool,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         gradients = torch.autograd.grad(
             outputs=d_out,
             inputs=interpolated,
             grad_outputs=torch.ones_like(d_out),
             create_graph=True,
-            retain_graph=retain_graph,
+            retain_graph=True,
         )[0]
         
         gradients = gradients.view(gradients.size(0), -1)
