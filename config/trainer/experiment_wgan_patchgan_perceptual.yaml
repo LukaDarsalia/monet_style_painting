@@ -1,0 +1,51 @@
+# Experiment: CycleGAN with WGAN-GP loss, perceptual loss, and PatchGAN discriminator
+
+_base_: "base.yaml"
+
+run_name: "monet-wgan-gp-perceptual"
+description: "CycleGAN with WGAN-GP loss, perceptual loss, and PatchGAN discriminator"
+
+s3:
+  prefix: "monet-gan/models/wgan-gp-perceptual"
+
+wandb:
+  tags:
+    - "cyclegan"
+    - "unet"
+    - "patchgan"
+    - "wgan-gp"
+    - "perceptual"
+
+# Use a norm without batch statistics for WGAN-GP
+discriminator:
+  type: patchgan
+  input_channels: 3
+  base_channels: 64
+  num_layers: 3
+  kernel_size: 4
+  norm: layer
+  activation: leaky_relu
+  use_sigmoid: false
+
+optimizer:
+  generator:
+    type: adam
+    lr: 0.0001
+    betas: [0.0, 0.9]
+  
+  discriminator:
+    type: adam
+    lr: 0.0001
+    betas: [0.0, 0.9]
+
+losses:
+  gan_mode: wgan-gp
+  cycle_loss_type: l1
+  identity_loss_type: l1
+  
+  weights:
+    adversarial: 1.0
+    cycle: 10.0
+    identity: 5.0
+    perceptual: 1.0
+    gradient_penalty: 10.0

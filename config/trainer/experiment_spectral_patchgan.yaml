@@ -1,0 +1,36 @@
+# Experiment: CycleGAN with Spectral Normalization discriminator (no perceptual loss)
+
+_base_: "base.yaml"
+
+run_name: "monet-spectral-patchgan"
+description: "CycleGAN with Spectral Normalization discriminator (no perceptual loss)"
+
+s3:
+  prefix: "monet-gan/models/spectral-patchgan"
+
+wandb:
+  tags:
+    - "cyclegan"
+    - "unet"
+    - "spectral"
+    - "lsgan"
+
+discriminator:
+  type: spectral
+  input_channels: 3
+  base_channels: 64
+  num_layers: 3
+  kernel_size: 4
+  activation: leaky_relu
+
+losses:
+  gan_mode: lsgan
+  cycle_loss_type: l1
+  identity_loss_type: l1
+  
+  weights:
+    adversarial: 1.0
+    cycle: 10.0
+    identity: 5.0
+    perceptual: 0.0
+    gradient_penalty: 0.0

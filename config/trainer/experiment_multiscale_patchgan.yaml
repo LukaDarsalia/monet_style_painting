@@ -1,0 +1,39 @@
+# Experiment: CycleGAN with MultiScale PatchGAN discriminator (no perceptual loss)
+
+_base_: "base.yaml"
+
+run_name: "monet-multiscale-patchgan"
+description: "CycleGAN with MultiScale PatchGAN discriminator (no perceptual loss)"
+
+s3:
+  prefix: "monet-gan/models/multiscale-patchgan"
+
+wandb:
+  tags:
+    - "cyclegan"
+    - "unet"
+    - "patchgan"
+    - "multiscale"
+
+discriminator:
+  type: multiscale
+  num_discriminators: 3
+  input_channels: 3
+  base_channels: 64
+  num_layers: 3
+  kernel_size: 4
+  norm: batch
+  activation: leaky_relu
+  use_sigmoid: false
+
+losses:
+  gan_mode: lsgan
+  cycle_loss_type: l1
+  identity_loss_type: l1
+  
+  weights:
+    adversarial: 1.0
+    cycle: 10.0
+    identity: 5.0
+    perceptual: 0.0
+    gradient_penalty: 0.0
