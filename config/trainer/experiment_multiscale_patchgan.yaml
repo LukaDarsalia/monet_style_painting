@@ -2,8 +2,8 @@
 
 _base_: "base.yaml"
 
-run_name: "monet-multiscale-patchgan"
-description: "CycleGAN with MultiScale PatchGAN discriminator (no perceptual loss)"
+run_name: "monet-multiscale-wgan-gp"
+description: "CycleGAN with WGAN-GP loss and MultiScale PatchGAN discriminator"
 
 s3:
   prefix: "monet-gan/models/multiscale-patchgan"
@@ -14,6 +14,7 @@ wandb:
     - "unet"
     - "patchgan"
     - "multiscale"
+    - "wgan-gp"
 
 discriminator:
   type: multiscale
@@ -22,12 +23,23 @@ discriminator:
   base_channels: 64
   num_layers: 3
   kernel_size: 4
-  norm: batch
+  norm: layer
   activation: leaky_relu
   use_sigmoid: false
 
+optimizer:
+  generator:
+    type: adam
+    lr: 0.0001
+    betas: [0.0, 0.9]
+  
+  discriminator:
+    type: adam
+    lr: 0.0001
+    betas: [0.0, 0.9]
+
 losses:
-  gan_mode: lsgan
+  gan_mode: wgan-gp
   cycle_loss_type: l1
   identity_loss_type: l1
   
@@ -36,4 +48,4 @@ losses:
     cycle: 10.0
     identity: 5.0
     perceptual: 0.0
-    gradient_penalty: 0.0
+    gradient_penalty: 10.0

@@ -2,8 +2,8 @@
 
 _base_: "base.yaml"
 
-run_name: "monet-patchgan-upsample"
-description: "CycleGAN with upsample+conv decoder and PatchGAN discriminator (no perceptual loss)"
+run_name: "monet-upsample-wgan-gp"
+description: "CycleGAN with upsample+conv decoder, WGAN-GP loss, and PatchGAN discriminator"
 
 s3:
   prefix: "monet-gan/models/patchgan-upsample"
@@ -14,6 +14,7 @@ wandb:
     - "unet"
     - "patchgan"
     - "upsample"
+    - "wgan-gp"
 
 generator:
   decoder:
@@ -109,8 +110,29 @@ generator:
       activation: relu
       dropout: 0.0
 
+discriminator:
+  type: patchgan
+  input_channels: 3
+  base_channels: 64
+  num_layers: 3
+  kernel_size: 4
+  norm: layer
+  activation: leaky_relu
+  use_sigmoid: false
+
+optimizer:
+  generator:
+    type: adam
+    lr: 0.0001
+    betas: [0.0, 0.9]
+  
+  discriminator:
+    type: adam
+    lr: 0.0001
+    betas: [0.0, 0.9]
+
 losses:
-  gan_mode: lsgan
+  gan_mode: wgan-gp
   cycle_loss_type: l1
   identity_loss_type: l1
   
@@ -119,4 +141,4 @@ losses:
     cycle: 10.0
     identity: 5.0
     perceptual: 0.0
-    gradient_penalty: 0.0
+    gradient_penalty: 10.0
