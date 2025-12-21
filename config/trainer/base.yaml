@@ -1,0 +1,336 @@
+# Base configuration for the Monet GAN trainer
+# All values are REQUIRED - no defaults in code
+# NOTE: run_name and description MUST be in experiment configs
+
+# =============================================================================
+# Input/Output Settings
+# =============================================================================
+
+input_artifact:
+  name: "monet-dataset-augmented"
+  version: "latest"
+
+s3:
+  bucket_name: "personal-data-science-data"
+  prefix: "monet-gan/models"
+
+wandb:
+  project_name: "monet-gan"
+  entity: null
+  tags:
+    - "pipeline"
+    - "trainer"
+
+# =============================================================================
+# LEGO-style Generator
+# =============================================================================
+# Build the generator block by block. Available blocks:
+#
+# conv:
+#   in_channels, out_channels, kernel_size, stride, padding, norm, activation
+#
+# conv_transpose:
+#   in_channels, out_channels, kernel_size, stride, padding, output_padding, norm, activation
+#
+# upsample_conv:
+#   in_channels, out_channels, kernel_size, scale_factor, mode (bilinear/nearest), norm, activation
+#
+# residual:
+#   channels, kernel_size, norm, activation, dropout
+#
+# double_conv:
+#   in_channels, out_channels, kernel_size, norm, activation, dropout
+#
+# max_pool:
+#   kernel_size, stride (optional)
+#
+# avg_pool:
+#   kernel_size, stride (optional)
+#
+# dropout:
+#   p
+#
+# skip_connections: [[encoder_idx, decoder_idx], ...]
+#   Connect output of encoder[idx] to be concatenated before decoder[idx]
+
+generator:
+  encoder:
+    # Level 0: 64x64 -> 32x32
+    - type: double_conv
+      in_channels: 3
+      out_channels: 64
+      kernel_size: 3
+      norm: batch
+      activation: relu
+      dropout: 0.0
+    - type: residual
+      channels: 64
+      kernel_size: 3
+      norm: batch
+      activation: relu
+      dropout: 0.0
+    - type: max_pool
+      kernel_size: 2
+    
+    # Level 1: 32x32 -> 16x16
+    - type: double_conv
+      in_channels: 64
+      out_channels: 128
+      kernel_size: 3
+      norm: batch
+      activation: relu
+      dropout: 0.0
+    - type: residual
+      channels: 128
+      kernel_size: 3
+      norm: batch
+      activation: relu
+      dropout: 0.0
+    - type: max_pool
+      kernel_size: 2
+    
+    # Level 2: 16x16 -> 8x8
+    - type: double_conv
+      in_channels: 128
+      out_channels: 256
+      kernel_size: 3
+      norm: batch
+      activation: relu
+      dropout: 0.0
+    - type: residual
+      channels: 256
+      kernel_size: 3
+      norm: batch
+      activation: relu
+      dropout: 0.0
+    - type: max_pool
+      kernel_size: 2
+    
+    # Level 3: 8x8 -> 4x4
+    - type: double_conv
+      in_channels: 256
+      out_channels: 512
+      kernel_size: 3
+      norm: batch
+      activation: relu
+      dropout: 0.0
+    - type: residual
+      channels: 512
+      kernel_size: 3
+      norm: batch
+      activation: relu
+      dropout: 0.0
+    - type: max_pool
+      kernel_size: 2
+  
+  bottleneck:
+    # 4x4 resolution
+    - type: double_conv
+      in_channels: 512
+      out_channels: 1024
+      kernel_size: 3
+      norm: batch
+      activation: relu
+      dropout: 0.0
+    - type: residual
+      channels: 1024
+      kernel_size: 3
+      norm: batch
+      activation: relu
+      dropout: 0.0
+  
+  decoder:
+    # Level 3: 4x4 -> 8x8, concat with encoder[10] (512ch) -> 1024ch input
+    - type: conv_transpose
+      in_channels: 1024
+      out_channels: 512
+      kernel_size: 2
+      stride: 2
+      padding: 0
+      output_padding: 0
+      norm: batch
+      activation: relu
+    - type: double_conv
+      in_channels: 1024
+      out_channels: 512
+      kernel_size: 3
+      norm: batch
+      activation: relu
+      dropout: 0.0
+    - type: residual
+      channels: 512
+      kernel_size: 3
+      norm: batch
+      activation: relu
+      dropout: 0.0
+    
+    # Level 2: 8x8 -> 16x16, concat with encoder[7] (256ch) -> 512ch input
+    - type: conv_transpose
+      in_channels: 512
+      out_channels: 256
+      kernel_size: 2
+      stride: 2
+      padding: 0
+      output_padding: 0
+      norm: batch
+      activation: relu
+    - type: double_conv
+      in_channels: 512
+      out_channels: 256
+      kernel_size: 3
+      norm: batch
+      activation: relu
+      dropout: 0.0
+    - type: residual
+      channels: 256
+      kernel_size: 3
+      norm: batch
+      activation: relu
+      dropout: 0.0
+    
+    # Level 1: 16x16 -> 32x32, concat with encoder[4] (128ch) -> 256ch input
+    - type: conv_transpose
+      in_channels: 256
+      out_channels: 128
+      kernel_size: 2
+      stride: 2
+      padding: 0
+      output_padding: 0
+      norm: batch
+      activation: relu
+    - type: double_conv
+      in_channels: 256
+      out_channels: 128
+      kernel_size: 3
+      norm: batch
+      activation: relu
+      dropout: 0.0
+    - type: residual
+      channels: 128
+      kernel_size: 3
+      norm: batch
+      activation: relu
+      dropout: 0.0
+    
+    # Level 0: 32x32 -> 64x64, concat with encoder[1] (64ch) -> 128ch input
+    - type: conv_transpose
+      in_channels: 128
+      out_channels: 64
+      kernel_size: 2
+      stride: 2
+      padding: 0
+      output_padding: 0
+      norm: batch
+      activation: relu
+    - type: double_conv
+      in_channels: 128
+      out_channels: 64
+      kernel_size: 3
+      norm: batch
+      activation: relu
+      dropout: 0.0
+    - type: residual
+      channels: 64
+      kernel_size: 3
+      norm: batch
+      activation: relu
+      dropout: 0.0
+  
+  output:
+    - type: conv
+      in_channels: 64
+      out_channels: 3
+      kernel_size: 1
+      stride: 1
+      padding: 0
+      norm: none
+      activation: tanh
+  
+  # Skip connections: [encoder_block_idx, decoder_block_idx]
+  # Connect encoder output at resolution X to decoder input at resolution X
+  # encoder[10] = 8x8, encoder[7] = 16x16, encoder[4] = 32x32, encoder[1] = 64x64
+  skip_connections:
+    - [10, 1]
+    - [7, 4]
+    - [4, 7]
+    - [1, 10]
+
+# =============================================================================
+# Discriminator
+# =============================================================================
+# Available types: patchgan, multiscale, spectral, swin
+
+discriminator:
+  type: patchgan
+  input_channels: 3
+  base_channels: 64
+  num_layers: 3
+  kernel_size: 4
+  norm: batch
+  activation: leaky_relu
+  use_sigmoid: false
+
+# =============================================================================
+# Training
+# =============================================================================
+
+training:
+  num_epochs: 20
+  batch_size: 24
+  num_workers: 4
+  buffer_size: 50
+  save_interval: 1
+  n_critic: 5
+  normalize:
+    mean: [0.485, 0.456, 0.406]
+    std: [0.229, 0.224, 0.225]
+
+# =============================================================================
+# Optimizer
+# =============================================================================
+
+optimizer:
+  generator:
+    type: adam
+    lr: 0.0002
+    betas: [0.5, 0.999]
+    scheduler:
+      type: cosine
+      warmup_steps: 0
+      eta_min: 0
+  
+  discriminator:
+    type: adam
+    lr: 0.0002
+    betas: [0.5, 0.999]
+    scheduler:
+      type: cosine
+      warmup_steps: 0
+      eta_min: 0
+
+# =============================================================================
+# Losses
+# =============================================================================
+
+losses:
+  gan_mode: lsgan
+  cycle_loss_type: l1
+  identity_loss_type: l1
+  
+  weights:
+    adversarial: 1.0
+    cycle: 10.0
+    identity: 5.0
+    perceptual: 0.0
+    gradient_penalty: 0.0
+
+# =============================================================================
+# Evaluation
+# =============================================================================
+
+evaluation:
+  evals_per_epoch: 1
+  num_sample_images: 8
+  num_evaluation_samples: 500
+  cosine_distance_eps: 0.1
+  batch_size: 32

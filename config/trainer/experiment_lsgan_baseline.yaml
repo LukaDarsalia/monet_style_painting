@@ -1,0 +1,29 @@
+# Experiment: CycleGAN baseline with LSGAN (no perceptual loss)
+
+_base_: "base.yaml"
+
+run_name: "monet-lsgan-baseline"
+description: "Baseline CycleGAN with LSGAN and PatchGAN discriminator (no perceptual loss)"
+
+s3:
+  prefix: "monet-gan/models/lsgan-baseline"
+
+wandb:
+  tags:
+    - "cyclegan"
+    - "unet"
+    - "patchgan"
+    - "lsgan"
+    - "baseline"
+
+losses:
+  gan_mode: lsgan
+  cycle_loss_type: l1
+  identity_loss_type: l1
+  
+  weights:
+    adversarial: 1.0
+    cycle: 10.0
+    identity: 5.0
+    perceptual: 0.0
+    gradient_penalty: 0.0

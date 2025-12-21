@@ -1,0 +1,30 @@
+# Experiment: CycleGAN with LSGAN loss, perceptual loss, and PatchGAN discriminator
+
+_base_: "base.yaml"
+
+run_name: "monet-lsgan-perceptual"
+description: "CycleGAN with LSGAN and perceptual loss using PatchGAN discriminator"
+
+s3:
+  prefix: "monet-gan/models/lsgan-perceptual"
+
+wandb:
+  tags:
+    - "cyclegan"
+    - "unet"
+    - "patchgan"
+    - "lsgan"
+    - "perceptual"
+
+# LSGAN with perceptual loss
+losses:
+  gan_mode: lsgan
+  cycle_loss_type: l1
+  identity_loss_type: l1
+  
+  weights:
+    adversarial: 1.0
+    cycle: 10.0
+    identity: 5.0
+    perceptual: 1.0
+    gradient_penalty: 0.0

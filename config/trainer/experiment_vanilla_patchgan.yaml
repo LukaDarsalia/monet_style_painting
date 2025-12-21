@@ -1,0 +1,28 @@
+# Experiment: CycleGAN with Vanilla GAN loss and PatchGAN discriminator
+
+_base_: "base.yaml"
+
+run_name: "monet-vanilla-patchgan"
+description: "CycleGAN with vanilla BCE loss and PatchGAN discriminator"
+
+s3:
+  prefix: "monet-gan/models/vanilla-patchgan"
+
+wandb:
+  tags:
+    - "cyclegan"
+    - "unet"
+    - "patchgan"
+    - "vanilla"
+
+losses:
+  gan_mode: vanilla
+  cycle_loss_type: l1
+  identity_loss_type: l1
+  
+  weights:
+    adversarial: 1.0
+    cycle: 10.0
+    identity: 5.0
+    perceptual: 0.0
+    gradient_penalty: 0.0
