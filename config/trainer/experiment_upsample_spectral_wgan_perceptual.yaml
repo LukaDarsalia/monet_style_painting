@@ -1,4 +1,4 @@
-# Experiment: CycleGAN with upsample+conv decoder, MultiScale PatchGAN, WGAN-GP, and perceptual loss
+# Experiment: CycleGAN with upsample+conv decoder, Spectral discriminator, WGAN-GP, and perceptual loss
 
 _base_: "base.yaml"
 
