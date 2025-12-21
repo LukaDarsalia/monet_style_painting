@@ -651,13 +651,12 @@ class CycleGANTrainer:
                 'epoch': epoch + 1,
             }, step=self.global_step)
             
-            # Save checkpoint
+            # Save best checkpoint
             is_best = metrics['mifid'] < self.best_mifid
             if is_best:
                 self.best_mifid = metrics['mifid']
                 print(f"  New best MiFID: {self.best_mifid:.2f}")
-            
-            self.save_checkpoint(is_best=is_best)
+                self.save_checkpoint(is_best=True)
             
             # Save periodic checkpoint
             if (epoch + 1) % self.config['training']['save_interval'] == 0:
