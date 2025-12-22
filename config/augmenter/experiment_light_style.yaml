@@ -1,0 +1,85 @@
+# Experiment configuration: Light augmentations for 64x64/256x256 training
+
+_base_: "base.yaml"
+
+run_name: "monet-augmenter-light-style"
+description: "Light augmentations: subtle color jitter for Monet, flips/crops for both, plus light blur for photos"
+
+# Input artifact version
+input_artifact:
+  version: "latest"
+
+# S3 prefix for this experiment
+s3:
+  prefix: "monet-gan/augmented/light-style"
+
+# W&B settings for this experiment
+wandb:
+  tags:
+    - "pipeline"
+    - "augmenter"
+    - "light"
+    - "style"
+
+augmentations:
+  # Photo augmentations (applied to train/photo)
+  photo:
+    aug_flip:
+      transforms:
+        - name: random_horizontal_flip
+          params:
+            probability: 1.0
+      fraction: 0.2
+
+    aug_color:
+      transforms:
+        - name: color_jitter
+          params:
+            brightness: 0.2
+            contrast: 0.2
+            saturation: 0.2
+            hue: 0.1
+      fraction: 0.2
+
+    aug_crop:
+      transforms:
+        - name: random_crop
+          params:
+            scale_min: 0.4
+            scale_max: 0.7
+      fraction: 0.3
+
+    aug_blur:
+      transforms:
+        - name: gaussian_blur
+          params:
+            sigma_min: 0.1
+            sigma_max: 1.0
+      fraction: 0.1
+
+  # Monet augmentations (applied to train/monet)
+  monet:
+    aug_flip:
+      transforms:
+        - name: random_horizontal_flip
+          params:
+            probability: 1.0
+      fraction: 0.4
+
+    aug_color:
+      transforms:
+        - name: color_jitter
+          params:
+            brightness: 0.3
+            contrast: 0.3
+            saturation: 0.1
+            hue: 0.03
+      fraction: 0.2
+
+    aug_crop:
+      transforms:
+        - name: random_crop
+          params:
+            scale_min: 0.4
+            scale_max: 0.7
+      fraction: 0.4
