@@ -1,0 +1,250 @@
+# Experiment: CycleGAN with InstanceNorm generator, TransposedConv decoder, Spectral discriminator, WGAN-GP, and perceptual loss
+
+_base_: "base.yaml"
+
+run_name: "monet-spectral-wgan-gp-perceptual-in"
+description: "CycleGAN with InstanceNorm generator, TransposedConv decoder, Spectral discriminator, WGAN-GP, and perceptual loss"
+
+s3:
+  prefix: "monet-gan/models/spectral-wgan-gp-perceptual-in"
+
+wandb:
+  tags:
+    - "cyclegan"
+    - "unet"
+    - "spectral"
+    - "wgan-gp"
+    - "perceptual"
+    - "instancenorm"
+
+generator:
+  encoder:
+    # Level 0: 64x64 -> 32x32
+    - type: double_conv
+      in_channels: 3
+      out_channels: 64
+      kernel_size: 3
+      norm: instance
+      activation: relu
+      dropout: 0.0
+    - type: residual
+      channels: 64
+      kernel_size: 3
+      norm: instance
+      activation: relu
+      dropout: 0.0
+    - type: max_pool
+      kernel_size: 2
+    
+    # Level 1: 32x32 -> 16x16
+    - type: double_conv
+      in_channels: 64
+      out_channels: 128
+      kernel_size: 3
+      norm: instance
+      activation: relu
+      dropout: 0.0
+    - type: residual
+      channels: 128
+      kernel_size: 3
+      norm: instance
+      activation: relu
+      dropout: 0.0
+    - type: max_pool
+      kernel_size: 2
+    
+    # Level 2: 16x16 -> 8x8
+    - type: double_conv
+      in_channels: 128
+      out_channels: 256
+      kernel_size: 3
+      norm: instance
+      activation: relu
+      dropout: 0.0
+    - type: residual
+      channels: 256
+      kernel_size: 3
+      norm: instance
+      activation: relu
+      dropout: 0.0
+    - type: max_pool
+      kernel_size: 2
+    
+    # Level 3: 8x8 -> 4x4
+    - type: double_conv
+      in_channels: 256
+      out_channels: 512
+      kernel_size: 3
+      norm: instance
+      activation: relu
+      dropout: 0.0
+    - type: residual
+      channels: 512
+      kernel_size: 3
+      norm: instance
+      activation: relu
+      dropout: 0.0
+    - type: max_pool
+      kernel_size: 2
+  
+  bottleneck:
+    # 4x4 resolution
+    - type: double_conv
+      in_channels: 512
+      out_channels: 1024
+      kernel_size: 3
+      norm: instance
+      activation: relu
+      dropout: 0.0
+    - type: residual
+      channels: 1024
+      kernel_size: 3
+      norm: instance
+      activation: relu
+      dropout: 0.0
+  
+  decoder:
+    # Level 3: 4x4 -> 8x8, concat with encoder[10] (512ch) -> 1024ch input
+    - type: conv_transpose
+      in_channels: 1024
+      out_channels: 512
+      kernel_size: 2
+      stride: 2
+      padding: 0
+      output_padding: 0
+      norm: instance
+      activation: relu
+    - type: double_conv
+      in_channels: 1024
+      out_channels: 512
+      kernel_size: 3
+      norm: instance
+      activation: relu
+      dropout: 0.0
+    - type: residual
+      channels: 512
+      kernel_size: 3
+      norm: instance
+      activation: relu
+      dropout: 0.0
+    
+    # Level 2: 8x8 -> 16x16, concat with encoder[7] (256ch) -> 512ch input
+    - type: conv_transpose
+      in_channels: 512
+      out_channels: 256
+      kernel_size: 2
+      stride: 2
+      padding: 0
+      output_padding: 0
+      norm: instance
+      activation: relu
+    - type: double_conv
+      in_channels: 512
+      out_channels: 256
+      kernel_size: 3
+      norm: instance
+      activation: relu
+      dropout: 0.0
+    - type: residual
+      channels: 256
+      kernel_size: 3
+      norm: instance
+      activation: relu
+      dropout: 0.0
+    
+    # Level 1: 16x16 -> 32x32, concat with encoder[4] (128ch) -> 256ch input
+    - type: conv_transpose
+      in_channels: 256
+      out_channels: 128
+      kernel_size: 2
+      stride: 2
+      padding: 0
+      output_padding: 0
+      norm: instance
+      activation: relu
+    - type: double_conv
+      in_channels: 256
+      out_channels: 128
+      kernel_size: 3
+      norm: instance
+      activation: relu
+      dropout: 0.0
+    - type: residual
+      channels: 128
+      kernel_size: 3
+      norm: instance
+      activation: relu
+      dropout: 0.0
+    
+    # Level 0: 32x32 -> 64x64, concat with encoder[1] (64ch) -> 128ch input
+    - type: conv_transpose
+      in_channels: 128
+      out_channels: 64
+      kernel_size: 2
+      stride: 2
+      padding: 0
+      output_padding: 0
+      norm: instance
+      activation: relu
+    - type: double_conv
+      in_channels: 128
+      out_channels: 64
+      kernel_size: 3
+      norm: instance
+      activation: relu
+      dropout: 0.0
+    - type: residual
+      channels: 64
+      kernel_size: 3
+      norm: instance
+      activation: relu
+      dropout: 0.0
+  
+  output:
+    - type: conv
+      in_channels: 64
+      out_channels: 3
+      kernel_size: 1
+      stride: 1
+      padding: 0
+      norm: none
+      activation: tanh
+  
+  # Skip connections: [encoder_block_idx, decoder_block_idx]
+  # encoder[10] = 8x8, encoder[7] = 16x16, encoder[4] = 32x32, encoder[1] = 64x64
+  skip_connections:
+    - [10, 1]
+    - [7, 4]
+    - [4, 7]
+    - [1, 10]
+
+discriminator:
+  type: spectral
+  input_channels: 3
+  base_channels: 64
+  num_layers: 3
+  kernel_size: 4
+  activation: leaky_relu
+
+optimizer:
+  generator:
+    type: adam
+    lr: 0.0001
+    betas: [0.0, 0.9]
+  
+  discriminator:
+    type: adam
+    lr: 0.0001
+    betas: [0.0, 0.9]
+
+losses:
+  gan_mode: wgan-gp
+  cycle_loss_type: l1
+  identity_loss_type: l1
+  
+  weights:
+    adversarial: 1.0
+    cycle: 10.0
+    identity: 5.0
+    perceptual: 1.0
+    gradient_penalty: 10.0
