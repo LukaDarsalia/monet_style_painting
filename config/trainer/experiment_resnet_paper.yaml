@@ -2,8 +2,8 @@
 
 _base_: "base.yaml"
 
-run_name: "monet-resnet-paper"
-description: "ResNet generator with reflection padding and transposed-conv decoder (CycleGAN paper)"
+run_name: "monet-resnet-paper-upsample"
+description: "ResNet generator with reflection padding and upsample decoder (CycleGAN paper style)"
 
 s3:
   prefix: "monet-gan/models/resnet-paper"
@@ -13,6 +13,7 @@ wandb:
     - "cyclegan"
     - "resnet"
     - "paper"
+    - "upsample"
     - "instancenorm"
 
 generator:
@@ -122,6 +123,7 @@ generator:
       kernel_size: 3
       scale_factor: 2
       mode: bilinear
+      padding_mode: reflect
       norm: instance
       activation: relu
     # u64
@@ -131,6 +133,7 @@ generator:
       kernel_size: 3
       scale_factor: 2
       mode: bilinear
+      padding_mode: reflect
       norm: instance
       activation: relu
 
@@ -144,7 +147,7 @@ generator:
       padding: 3
       padding_mode: reflect
       norm: none
-      activation: none
+      activation: tanh
 
   # ResNet generator does not use skip connections
   skip_connections: []
@@ -160,25 +163,28 @@ discriminator:
   activation: leaky_relu
   use_sigmoid: false
 
+training:
+  num_epochs: 200
+  batch_size: 1
+  num_workers: 4
+  buffer_size: 50
+  save_interval: 5
+  log_interval: 1
+  image_log_interval: 200
+  num_sample_images: 4
+  normalize:
+    mean: [0.5, 0.5, 0.5]
+    std: [0.5, 0.5, 0.5]
+
 optimizer:
-  generator:
-    type: adam
-    lr: 0.0002
-    betas: [0.0, 0.9]
-  
-  discriminator:
-    type: adam
-    lr: 0.0002
-    betas: [0.0, 0.9]
+  lr: 0.0002
+  betas: [0.5, 0.999]
+
+scheduler:
+  wait_epochs: 100
+  decay_epochs: 100
+  min_lr: 0.0
 
 losses:
-  gan_mode: wgan-gp
-  cycle_loss_type: l1
-  identity_loss_type: l1
-  
-  weights:
-    adversarial: 1.0
-    cycle: 10.0
-    identity: 5.0
-    perceptual: 1.0
-    gradient_penalty: 10.0
+  lambda_cycle: 10.0
+  lambda_identity: 5.0

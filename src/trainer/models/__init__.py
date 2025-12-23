@@ -14,9 +14,6 @@ from .generator import (
 from .discriminator import (
     build_discriminator,
     PatchGANDiscriminator,
-    MultiScaleDiscriminator,
-    SpectralNormDiscriminator,
-    SwinTransformerDiscriminator,
     DISCRIMINATORS,
 )
 
@@ -30,8 +27,5 @@ __all__ = [
     # Discriminator
     "build_discriminator",
     "PatchGANDiscriminator",
-    "MultiScaleDiscriminator",
-    "SpectralNormDiscriminator",
-    "SwinTransformerDiscriminator",
     "DISCRIMINATORS",
 ]

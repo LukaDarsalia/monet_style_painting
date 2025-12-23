@@ -1,10 +1,10 @@
 """
-PatchGAN Discriminator Architectures
+PatchGAN Discriminator Architecture (CycleGAN paper).
 
 No default values - all config must be explicit.
 """
 
-from typing import Any, Dict, List
+from typing import Any, Dict
 
 import torch
 import torch.nn as nn
@@ -117,102 +117,3 @@ class PatchGANDiscriminator(nn.Module):
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         return self.model(x)
 
-
-class MultiScaleDiscriminator(nn.Module):
-    """
-    Multi-scale PatchGAN Discriminator.
-    
-    All config values are required - no defaults.
-    
-    Config structure:
-        num_discriminators: int
-        input_channels: int
-        base_channels: int
-        num_layers: int
-        kernel_size: int
-        norm: str
-        activation: str
-        use_sigmoid: bool
-    """
-    
-    def __init__(self, config: Dict[str, Any]):
-        super().__init__()
-        
-        num_disc = config['num_discriminators']
-        
-        # Create multiple discriminators
-        self.discriminators = nn.ModuleList()
-        for _ in range(num_disc):
-            self.discriminators.append(PatchGANDiscriminator(config))
-        
-        # Downsampling for multi-scale
-        self.downsample = nn.AvgPool2d(3, stride=2, padding=1, count_include_pad=False)
-    
-    def forward(self, x: torch.Tensor) -> List[torch.Tensor]:
-        """Returns list of discriminator outputs at different scales."""
-        outputs = []
-        for i, disc in enumerate(self.discriminators):
-            outputs.append(disc(x))
-            if i < len(self.discriminators) - 1:
-                x = self.downsample(x)
-        return outputs
-
-
-class SpectralNormDiscriminator(nn.Module):
-    """
-    PatchGAN Discriminator with Spectral Normalization.
-    
-    All config values are required - no defaults.
-    
-    Config structure:
-        input_channels: int
-        base_channels: int
-        num_layers: int
-        kernel_size: int
-        activation: str
-    """
-    
-    def __init__(self, config: Dict[str, Any]):
-        super().__init__()
-        
-        # All required - no defaults
-        in_ch = config['input_channels']
-        base_ch = config['base_channels']
-        num_layers = config['num_layers']
-        kernel_size = config['kernel_size']
-        activation = config['activation']
-        
-        padding = 1
-        
-        # First layer
-        layers = [
-            nn.utils.spectral_norm(nn.Conv2d(in_ch, base_ch, kernel_size, stride=2, padding=padding)),
-            build_activation(activation),
-        ]
-        
-        # Middle layers
-        ch_mult = 1
-        ch_mult_prev = 1
-        for i in range(1, num_layers):
-            ch_mult_prev = ch_mult
-            ch_mult = min(2 ** i, 8)
-            layers.extend([
-                nn.utils.spectral_norm(nn.Conv2d(base_ch * ch_mult_prev, base_ch * ch_mult, kernel_size, stride=2, padding=padding)),
-                build_activation(activation),
-            ])
-        
-        # Second to last layer
-        ch_mult_prev = ch_mult
-        ch_mult = min(2 ** num_layers, 8)
-        layers.extend([
-            nn.utils.spectral_norm(nn.Conv2d(base_ch * ch_mult_prev, base_ch * ch_mult, kernel_size, stride=1, padding=padding)),
-            build_activation(activation),
-        ])
-        
-        # Output layer
-        layers.append(nn.utils.spectral_norm(nn.Conv2d(base_ch * ch_mult, 1, kernel_size, stride=1, padding=padding)))
-        
-        self.model = nn.Sequential(*layers)
-    
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        return self.model(x)

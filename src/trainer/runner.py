@@ -2,9 +2,9 @@
 Trainer Pipeline Runner
 
 Usage:
-    python -m src.trainer.runner --config config/trainer/experiment_cyclegan.yaml
-    python -m src.trainer.runner --config config/trainer/experiment_cyclegan.yaml --resume checkpoints/checkpoint.pt
-    python -m src.trainer.runner --config config/trainer/experiment_cyclegan.yaml --test
+    python -m src.trainer.runner --config config/trainer/no_experiment.yaml
+    python -m src.trainer.runner --config config/trainer/no_experiment.yaml --resume checkpoints/checkpoint.pt
+    python -m src.trainer.runner --config config/trainer/no_experiment.yaml --test
 """
 
 from pathlib import Path
@@ -145,8 +145,9 @@ def main(config: str, artifact_version: str, resume: str, test: bool) -> None:
             description=description,
             metadata={
                 'input_artifact': f"{input_artifact_name}:{input_artifact_version}",
-                'best_mifid': trainer.best_mifid,
                 'num_epochs': trainer.num_epochs,
+                'last_epoch': trainer.current_epoch,
+                'global_step': trainer.global_step,
                 'config': cfg,
             }
         )
@@ -164,7 +165,6 @@ def main(config: str, artifact_version: str, resume: str, test: bool) -> None:
         run.log_artifact(output_artifact)
         
         print("\n=== Pipeline Completed Successfully ===")
-        print(f"  Best MiFID: {trainer.best_mifid:.2f}")
 
 
 def _find_data_dir(root_dir: Path) -> Path:

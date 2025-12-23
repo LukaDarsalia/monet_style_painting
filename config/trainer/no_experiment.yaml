@@ -1,0 +1,41 @@
+# Minimal experiment config for CycleGAN paper setup
+
+_base_: "base.yaml"
+
+run_name: "monet-cyclegan-paper"
+description: "CycleGAN paper baseline (ResNet generator, PatchGAN discriminator, LSGAN)"
+
+s3:
+  prefix: "monet-gan/models/cyclegan-paper"
+
+wandb:
+  tags:
+    - "cyclegan"
+    - "paper"
+    - "baseline"
+
+training:
+  num_epochs: 200
+  batch_size: 32
+  num_workers: 24
+  buffer_size: 50
+  save_interval: 5
+  log_interval: 1
+  image_log_interval: 200
+  num_sample_images: 4
+  normalize:
+    mean: [0.5, 0.5, 0.5]
+    std: [0.5, 0.5, 0.5]
+
+optimizer:
+  lr: 0.0002
+  betas: [0.5, 0.999]
+
+scheduler:
+  wait_epochs: 100
+  decay_epochs: 100
+  min_lr: 0.0
+
+losses:
+  lambda_cycle: 10.0
+  lambda_identity: 5.0

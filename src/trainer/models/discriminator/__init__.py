@@ -6,19 +6,11 @@ from typing import Any, Dict
 
 import torch.nn as nn
 
-from .patchgan import (
-    PatchGANDiscriminator,
-    MultiScaleDiscriminator,
-    SpectralNormDiscriminator,
-)
-from .swin import SwinTransformerDiscriminator
+from .patchgan import PatchGANDiscriminator
 
 
 DISCRIMINATORS = {
     'patchgan': PatchGANDiscriminator,
-    'multiscale': MultiScaleDiscriminator,
-    'spectral': SpectralNormDiscriminator,
-    'swin': SwinTransformerDiscriminator,
 }
 
 
@@ -38,9 +30,6 @@ def build_discriminator(config: Dict[str, Any]) -> nn.Module:
 
 __all__ = [
     "PatchGANDiscriminator",
-    "MultiScaleDiscriminator",
-    "SpectralNormDiscriminator",
-    "SwinTransformerDiscriminator",
     "build_discriminator",
     "DISCRIMINATORS",
 ]
