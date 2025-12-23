@@ -151,13 +151,10 @@ generator:
 
 
 discriminator:
-  type: patchgan
-  input_channels: 3
-  base_channels: 64
-  num_layers: 3
-  kernel_size: 4
-  norm: instance
-  activation: leaky_relu
+  type: swin
+  pretrained: true
+  swin_variant: tiny
+  freeze_backbone: false
   use_sigmoid: false
 
 optimizer:
