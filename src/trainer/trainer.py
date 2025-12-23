@@ -183,6 +183,7 @@ class CycleGANTrainer:
         self._logged_generator_trace = False
         self._d_accum_steps = 0
         self._g_accum_steps = 0
+        self._resumed = False
     
     def _build_models(self):
         """Build generator and discriminator models."""
@@ -256,6 +257,29 @@ class CycleGANTrainer:
         self.scheduler_D = get_lr_scheduler(
             self.optimizer_D, disc_scheduler_config, self.total_steps, steps_per_epoch
         )
+
+    def _reset_optimizer_lrs(self):
+        """Reset optimizer learning rates to config (for correct scheduler base_lrs)."""
+        gen_lr = self.config['optimizer']['generator']['lr']
+        for group in self.optimizer_G.param_groups:
+            group['lr'] = gen_lr
+            if 'initial_lr' in group:
+                group['initial_lr'] = gen_lr
+
+        disc_lr = self.config['optimizer']['discriminator']['lr']
+        for group in self.optimizer_D.param_groups:
+            group['lr'] = disc_lr
+            if 'initial_lr' in group:
+                group['initial_lr'] = disc_lr
+
+    def _sync_schedulers_to_step(self):
+        """Fast-forward schedulers to the current optimizer step."""
+        if self.optim_step <= 0:
+            return
+        if self.scheduler_G is not None:
+            self.scheduler_G.step(self.optim_step)
+        if self.scheduler_D is not None:
+            self.scheduler_D.step(self.optim_step)
     
     def _set_requires_grad(self, models: List[nn.Module], requires_grad: bool):
         """Set requires_grad for all parameters in models."""
@@ -583,6 +607,7 @@ class CycleGANTrainer:
             self.scheduler_G.load_state_dict(checkpoint['scheduler_G'])
         if 'scheduler_D' in checkpoint and self.scheduler_D is not None:
             self.scheduler_D.load_state_dict(checkpoint['scheduler_D'])
+        self._resumed = True
     
     def train(self, dataloaders: Dict):
         """
@@ -599,11 +624,15 @@ class CycleGANTrainer:
         self.total_steps = self.num_epochs * optim_steps_per_epoch
         
         # Rebuild schedulers with correct total_steps
+        if self._resumed:
+            self._reset_optimizer_lrs()
         self._build_optimizers(
             total_steps=self.total_steps,
             steps_per_epoch=optim_steps_per_epoch,
             rebuild_optimizers=False,
         )
+        if self._resumed:
+            self._sync_schedulers_to_step()
         
         # Compute training features for MiFID (once)
         print("\n=== Computing training features for MiFID ===")
