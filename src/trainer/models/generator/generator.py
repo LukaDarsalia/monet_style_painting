@@ -167,6 +167,7 @@ class UpsampleConvBlock(nn.Module):
         kernel_size: int
         scale_factor: int
         mode: str (bilinear, nearest)
+        padding_mode: str (optional, defaults to zeros)
         norm: str
         activation: str
     """
@@ -181,11 +182,15 @@ class UpsampleConvBlock(nn.Module):
         self.mode = config['mode']
         norm = config['norm']
         activation = config['activation']
+        padding_mode = config.get('padding_mode', 'zeros')
         
         padding = kernel // 2
         bias = (norm == 'none')
         
-        self.conv = nn.Conv2d(in_ch, out_ch, kernel, padding=padding, bias=bias)
+        self.conv = nn.Conv2d(
+            in_ch, out_ch, kernel, padding=padding, bias=bias,
+            padding_mode=padding_mode,
+        )
         self.norm = build_norm(norm, out_ch)
         self.act = build_activation(activation)
     

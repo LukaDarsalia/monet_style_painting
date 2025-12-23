@@ -144,17 +144,20 @@ generator:
       padding: 3
       padding_mode: reflect
       norm: none
-      activation: tanh
-  
+      activation: none
+
   # ResNet generator does not use skip connections
   skip_connections: []
 
 
 discriminator:
-  type: swin
-  pretrained: true
-  swin_variant: tiny
-  freeze_backbone: false
+  type: patchgan
+  input_channels: 3
+  base_channels: 64
+  num_layers: 3
+  kernel_size: 4
+  norm: instance
+  activation: leaky_relu
   use_sigmoid: false
 
 optimizer:

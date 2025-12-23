@@ -33,7 +33,7 @@ wandb:
 #   in_channels, out_channels, kernel_size, stride, padding, output_padding, norm, activation
 #
 # upsample_conv:
-#   in_channels, out_channels, kernel_size, scale_factor, mode (bilinear/nearest), norm, activation
+#   in_channels, out_channels, kernel_size, scale_factor, mode (bilinear/nearest), padding_mode (optional), norm, activation
 #
 # residual:
 #   channels, kernel_size, padding_mode (optional), norm, activation, dropout
