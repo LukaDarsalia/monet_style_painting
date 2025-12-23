@@ -85,6 +85,7 @@ class ConvBlock(nn.Module):
         kernel_size: int
         stride: int
         padding: int
+        padding_mode: str (optional, defaults to zeros)
         norm: str
         activation: str
     """
@@ -99,10 +100,14 @@ class ConvBlock(nn.Module):
         padding = config['padding']
         norm = config['norm']
         activation = config['activation']
+        padding_mode = config.get('padding_mode', 'zeros')
         
         bias = (norm == 'none')
         
-        self.conv = nn.Conv2d(in_ch, out_ch, kernel, stride=stride, padding=padding, bias=bias)
+        self.conv = nn.Conv2d(
+            in_ch, out_ch, kernel, stride=stride, padding=padding, bias=bias,
+            padding_mode=padding_mode,
+        )
         self.norm = build_norm(norm, out_ch)
         self.act = build_activation(activation)
     
@@ -199,6 +204,7 @@ class ResidualBlock(nn.Module):
     Config:
         channels: int
         kernel_size: int
+        padding_mode: str (optional, defaults to zeros)
         norm: str
         activation: str
         dropout: float
@@ -212,11 +218,15 @@ class ResidualBlock(nn.Module):
         norm = config['norm']
         activation = config['activation']
         dropout = config['dropout']
+        padding_mode = config.get('padding_mode', 'zeros')
         
         padding = kernel // 2
         
         layers = [
-            nn.Conv2d(channels, channels, kernel, padding=padding, bias=False),
+            nn.Conv2d(
+                channels, channels, kernel, padding=padding, bias=False,
+                padding_mode=padding_mode,
+            ),
             build_norm(norm, channels),
             build_activation(activation),
         ]
@@ -225,7 +235,10 @@ class ResidualBlock(nn.Module):
             layers.append(nn.Dropout2d(dropout))
         
         layers.extend([
-            nn.Conv2d(channels, channels, kernel, padding=padding, bias=False),
+            nn.Conv2d(
+                channels, channels, kernel, padding=padding, bias=False,
+                padding_mode=padding_mode,
+            ),
             build_norm(norm, channels),
         ])
         
@@ -245,6 +258,7 @@ class DoubleConvBlock(nn.Module):
         in_channels: int
         out_channels: int
         kernel_size: int
+        padding_mode: str (optional, defaults to zeros)
         norm: str
         activation: str
         dropout: float
@@ -259,11 +273,15 @@ class DoubleConvBlock(nn.Module):
         norm = config['norm']
         activation = config['activation']
         dropout = config['dropout']
+        padding_mode = config.get('padding_mode', 'zeros')
         
         padding = kernel // 2
         
         layers = [
-            nn.Conv2d(in_ch, out_ch, kernel, padding=padding, bias=False),
+            nn.Conv2d(
+                in_ch, out_ch, kernel, padding=padding, bias=False,
+                padding_mode=padding_mode,
+            ),
             build_norm(norm, out_ch),
             build_activation(activation),
         ]
@@ -272,7 +290,10 @@ class DoubleConvBlock(nn.Module):
             layers.append(nn.Dropout2d(dropout))
         
         layers.extend([
-            nn.Conv2d(out_ch, out_ch, kernel, padding=padding, bias=False),
+            nn.Conv2d(
+                out_ch, out_ch, kernel, padding=padding, bias=False,
+                padding_mode=padding_mode,
+            ),
             build_norm(norm, out_ch),
             build_activation(activation),
         ])

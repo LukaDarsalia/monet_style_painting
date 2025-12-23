@@ -142,12 +142,6 @@ generator:
       norm: instance
       activation: relu
       dropout: 0.0
-    - type: residual
-      channels: 512
-      kernel_size: 3
-      norm: instance
-      activation: relu
-      dropout: 0.0
     
     # Level 2: 8x8 -> 16x16, concat with encoder[10] (256ch) -> 512ch input
     - type: upsample_conv
@@ -161,12 +155,6 @@ generator:
     - type: double_conv
       in_channels: 512
       out_channels: 256
-      kernel_size: 3
-      norm: instance
-      activation: relu
-      dropout: 0.0
-    - type: residual
-      channels: 256
       kernel_size: 3
       norm: instance
       activation: relu
@@ -188,12 +176,6 @@ generator:
       norm: instance
       activation: relu
       dropout: 0.0
-    - type: residual
-      channels: 128
-      kernel_size: 3
-      norm: instance
-      activation: relu
-      dropout: 0.0
     
     # Level 0: 32x32 -> 64x64
     - type: upsample_conv
@@ -207,12 +189,6 @@ generator:
     - type: double_conv
       in_channels: 64
       out_channels: 64
-      kernel_size: 3
-      norm: instance
-      activation: relu
-      dropout: 0.0
-    - type: residual
-      channels: 64
       kernel_size: 3
       norm: instance
       activation: relu

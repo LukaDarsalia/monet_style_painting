@@ -27,7 +27,7 @@ wandb:
 # Build the generator block by block. Available blocks:
 #
 # conv:
-#   in_channels, out_channels, kernel_size, stride, padding, norm, activation
+#   in_channels, out_channels, kernel_size, stride, padding, padding_mode (optional), norm, activation
 #
 # conv_transpose:
 #   in_channels, out_channels, kernel_size, stride, padding, output_padding, norm, activation
@@ -36,10 +36,10 @@ wandb:
 #   in_channels, out_channels, kernel_size, scale_factor, mode (bilinear/nearest), norm, activation
 #
 # residual:
-#   channels, kernel_size, norm, activation, dropout
+#   channels, kernel_size, padding_mode (optional), norm, activation, dropout
 #
 # double_conv:
-#   in_channels, out_channels, kernel_size, norm, activation, dropout
+#   in_channels, out_channels, kernel_size, padding_mode (optional), norm, activation, dropout
 #
 # max_pool:
 #   kernel_size, stride (optional)
@@ -276,12 +276,12 @@ discriminator:
 
 training:
   num_epochs: 20
-  batch_size: 24
+  batch_size: 16
   num_workers: 4
   buffer_size: 50
-  save_interval: 1
+  save_interval: 4
   n_critic: 5
-  accumulation_steps: 1
+  accumulation_steps: 5
   normalize:
     mean: [0.485, 0.456, 0.406]
     std: [0.229, 0.224, 0.225]
